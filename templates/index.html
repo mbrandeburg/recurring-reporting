@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Plaid Link Integration</title>
+  <script src="https://cdn.plaid.com/link/v2/stable/link-initialize.js"></script>
+</head>
+<body>
+
+  <!-- Button that opens Plaid Link -->
+  <button id="linkButton">Connect your bank</button>
+
+  <script type="text/javascript">
+    // Fetch the link token from the backend
+    function getLinkToken() {
+      return fetch('/create_link_token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+      .then(response => response.json())
+      .then(data => data.link_token)
+      .catch(error => {
+        console.error('Error fetching link token:', error);
+      });
+    }
+
+    // Initialize Plaid Link and open the UI when the button is clicked
+    document.getElementById('linkButton').onclick = async function() {
+      const linkToken = await getLinkToken();
+
+      if (linkToken) {
+        var linkHandler = Plaid.create({
+          token: linkToken,
+          onSuccess: function(public_token, metadata) {
+            // Send the public token to the backend to exchange for an access token
+            fetch('/exchange_public_token', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                public_token: public_token
+              })
+            })
+            .then(response => response.json())
+            .then(data => {
+              const access_token = data.access_token;
+
+              // Fetch recurring transactions using the access token
+              fetch('/get_recurring_transactions', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  access_token: access_token
+                })
+              })
+              .then(response => response.json())
+              .then(data => {
+                console.log('Recurring Transactions:', data.recurring_transactions);
+              })
+              .catch(error => {
+                console.error('Error fetching recurring transactions:', error);
+              });
+            })
+            .catch(error => {
+              console.error('Error exchanging public token:', error);
+            });
+          },
+          onExit: function(err, metadata) {
+            if (err != null) {
+              console.error('Error during Plaid Link:', err);
+            }
+          }
+        });
+
+        linkHandler.open();  // Open the Plaid Link UI
+      }
+    };
+
+  </script>
+
+</body>
+</html>

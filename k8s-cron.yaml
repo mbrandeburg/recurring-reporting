@@ -12,19 +12,19 @@ spec:
           - name: plaid-app
             image: plaid-app:latest  # Ensure you have pushed your Docker image to a registry
             env:
-            - name: PLAID_CLIENT_ID
-              valueFrom:
-                secretKeyRef:
-                  name: plaid-secrets
-                  key: client_id
-            - name: PLAID_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: plaid-secrets
-                  key: secret
-            - name: PLAID_PUBLIC_TOKEN
-              valueFrom:
-                secretKeyRef:
-                  name: plaid-secrets
-                  key: public_token
+              - name: PLAID_CLIENT_ID
+                valueFrom:
+                  secretKeyRef:
+                    name: plaid-secrets
+                    key: client_id
+              - name: PLAID_SECRET
+                valueFrom:
+                  secretKeyRef:
+                    name: plaid-secrets
+                    key: secret
+              - name: PLAID_PUBLIC_TOKEN
+                valueFrom:
+                  secretKeyRef:
+                    name: plaid-secrets
+                    key: public_token
           restartPolicy: OnFailure
