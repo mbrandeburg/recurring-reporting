@@ -39,4 +39,15 @@ WORKDIR /app
 COPY --chown=worker:worker . .
 
 # Run the app
-CMD ["python", "main.py"]
+# CMD ["python", "main.py"]
+
+# Expose the port the app runs on
+EXPOSE 8777
+
+# Define environment variables
+ENV FLASK_APP=main.py
+ENV FLASK_RUN_HOST=0.0.0.0
+ENV FLASK_ENV=development
+
+# Run the application
+CMD ["flask", "run", "--host=0.0.0.0", "--port=8777"]

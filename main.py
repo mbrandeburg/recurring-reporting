@@ -5,7 +5,6 @@ from plaid.model.item_public_token_exchange_request import ItemPublicTokenExchan
 from plaid.model.transactions_get_request import TransactionsGetRequest
 from plaid.model.transactions_get_request_options import TransactionsGetRequestOptions
 from plaid.model.country_code import CountryCode
-from plaid.model.products import Products  # Import the Products enum
 from flask import Flask, jsonify, request, render_template
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime, timedelta
@@ -72,7 +71,7 @@ def create_link_token():
     try:
         # Create a Link Token request using the user's ID
         request_data = LinkTokenCreateRequest(
-            products=[Products.AUTH, Products.TRANSACTIONS],  # Use the Products enum
+            products=['auth', 'transactions'],  # Use lowercase strings for products
             client_name="Your App Name",
             country_codes=[CountryCode('US')],
             language='en',
@@ -114,6 +113,81 @@ def exchange_public_token():
 
     except plaid.ApiException as e:
         return jsonify({"error": e.body}), 500
+
+# Route to fetch transactions and check recurring transactions using the access token
+@app.route('/get_recurring_transactions', methods=['POST'])
+def get_recurring_transactions():
+    data = request.get_json()
+    user_id = data.get('user_id')
+
+    if not user_id:
+        return jsonify({"error": "User ID not provided"}), 400
+
+    # Fetch the user and access token from the database
+    user = User.query.filter_by(client_user_id=user_id).first()
+
+    if not user or not user.access_token:
+        return jsonify({"error": "Access token not found for user"}), 404
+
+    try:
+        # Calculate date range (last 90 days)
+        end_date = datetime.today().strftime('%Y-%m-%d')
+        start_date = (datetime.today() - timedelta(days=90)).strftime('%Y-%m-%d')
+
+        # Request transactions from Plaid API
+        options = TransactionsGetRequestOptions(count=100)
+        transactions_request = TransactionsGetRequest(
+            access_token=user.access_token,
+            start_date=start_date,
+            end_date=end_date,
+            options=options
+        )
+        transactions_response = client.transactions_get(transactions_request)
+
+        transactions = transactions_response['transactions']
+
+        # Load whitelist from a JSON file
+        with open('whitelist.json', 'r') as f:
+            whitelist = [entry.upper() for entry in json.load(f)]  # Case-insensitive
+
+        # Process recurring transactions
+        recurring_transactions = find_recurring_transactions(transactions, whitelist)
+
+        return jsonify({'recurring_transactions': recurring_transactions}), 200
+
+    except plaid.ApiException as e:
+        return jsonify({"error": e.body}), 500
+
+# Function to find recurring transactions with the same amount, excluding those in the whitelist
+def find_recurring_transactions(transactions, whitelist):
+    transaction_map = {}
+
+    for transaction in transactions:
+        name = transaction['name'].upper()  # Normalize transaction name to uppercase
+        amount = transaction['amount']
+        date = datetime.strptime(transaction['date'], '%Y-%m-%d')  # Assuming date format
+
+        # Skip whitelisted transactions
+        if any(whitelisted_term in name for whitelisted_term in whitelist):
+            continue
+
+        if name in transaction_map:
+            transaction_map[name]['amounts'].append(amount)
+            transaction_map[name]['dates'].append(date)
+        else:
+            transaction_map[name] = {'amounts': [amount], 'dates': [date]}
+
+    # Filter to keep only transactions with the same amount more than once
+    recurring_transactions = {
+        name: {
+            'amounts': data['amounts'],
+            'last_date': max(data['dates']).strftime('%Y-%m-%d')  # Get latest transaction date
+        }
+        for name, data in transaction_map.items()
+        if len(data['amounts']) > 1 and len(set(data['amounts'])) == 1
+    }
+
+    return recurring_transactions
 
 # Entry point for running the application
 if __name__ == '__main__':
