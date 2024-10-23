@@ -16,7 +16,10 @@
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
-        }
+        },
+        body: JSON.stringify({
+          user_id: 'unique_user_id_123'  // Replace with a real user ID
+        })
       })
       .then(response => response.json())
       .then(data => data.link_token)
@@ -24,11 +27,11 @@
         console.error('Error fetching link token:', error);
       });
     }
-
+  
     // Initialize Plaid Link and open the UI when the button is clicked
     document.getElementById('linkButton').onclick = async function() {
       const linkToken = await getLinkToken();
-
+  
       if (linkToken) {
         var linkHandler = Plaid.create({
           token: linkToken,
@@ -40,30 +43,13 @@
                 'Content-Type': 'application/json'
               },
               body: JSON.stringify({
-                public_token: public_token
+                public_token: public_token,
+                user_id: 'unique_user_id_123'  // Use the same user ID
               })
             })
             .then(response => response.json())
             .then(data => {
-              const access_token = data.access_token;
-
-              // Fetch recurring transactions using the access token
-              fetch('/get_recurring_transactions', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                  access_token: access_token
-                })
-              })
-              .then(response => response.json())
-              .then(data => {
-                console.log('Recurring Transactions:', data.recurring_transactions);
-              })
-              .catch(error => {
-                console.error('Error fetching recurring transactions:', error);
-              });
+              console.log('Access Token:', data.access_token);
             })
             .catch(error => {
               console.error('Error exchanging public token:', error);
@@ -75,11 +61,10 @@
             }
           }
         });
-
+  
         linkHandler.open();  // Open the Plaid Link UI
       }
     };
-
   </script>
 
 </body>
