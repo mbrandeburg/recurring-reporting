@@ -1,5 +1,5 @@
 # TO RUN: have transaction data in 'chase.csv' at root
-
+import glob
 import csv
 import json
 from datetime import datetime
@@ -64,7 +64,12 @@ def run_test():
     whitelist = load_whitelist('whitelist.json')
 
     # Retrieve transactions from CSV file
-    transactions = get_transactions_from_csv('chase.csv')
+    # transactions = get_transactions_from_csv('chase.csv')
+    csv_files = glob.glob('[cC]*.[cC][sS][vV]') # Case insisitive glob to pick up Chase's exports
+    for csv_file in csv_files:
+        targetFile = csv_file
+        
+    transactions = get_transactions_from_csv(targetFile)
 
     # Find recurring transactions with the same amount
     recurring_transactions = find_recurring_transactions(transactions, whitelist)
