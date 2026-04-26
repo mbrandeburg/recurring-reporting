@@ -1,4 +1,4 @@
-FROM --platform=$BUILDPLATFORM python:3.11-alpine AS build
+FROM --platform=$BUILDPLATFORM python:3.12-alpine AS build
 RUN pip install --upgrade pip
 RUN pip install setuptools>=75.1.0
 
